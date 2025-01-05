@@ -1,6 +1,3 @@
-/*
-CODE by Malthein_Bor(Melthen-bor)
-*/
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -22,8 +19,8 @@ struct Type {
 	char start_character;
 };
 create_vector(Type);
-unsigned find_type(Types& types, std::string name) {
-	unsigned handle = 0;
+unsigned long long find_type(Types& types, std::string name) {
+	unsigned long long handle = 0;
 	while (handle < types.size()) {
 		if (types.at(handle).name == name) break;
 		handle++;
@@ -103,8 +100,9 @@ public:
 			if (isalpha(peek().val)) {
 				buf.push_back(consume());
 				while ((peek().exist && isalnum(peek().val))||peek().val=='_') buf.push_back(consume());
-				switch (loose_match(24, buf, char*,"return", "start", "end", "program", "class","auto", "let", "if", "elf", "else", "unless",
-					"while", "until", "function", "clr", "member", "sysout","procedure","sysin", "create", "destroy", "letter","embed","import","call")) {
+				switch (loose_match(30, buf, char*,"return", "start", "end", "program", "class","auto", "let", "if", "elf", "else", "unless",
+					"while", "until", "function", "clr", "member", "sysout","procedure","sysin", "create", "destroy", "letter","embed","import","as",
+					"open_class","struct","null","forever","pass")) {
 				case 0:
 					tkns.push_back({ 1 });
 					break;
@@ -179,6 +177,21 @@ public:
 					break;
 				case 24:
 					tkns.push_back({ 70 });
+					break;
+				case 25:
+					tkns.push_back({ 71 });
+					break;
+				case 26:
+					tkns.push_back({ 72 });
+					break;
+				case 27:
+					tkns.push_back({ 73 });
+					break;
+				case 28:
+					tkns.push_back({ 77 });
+					break;
+				case 29:
+					tkns.push_back({ 78 });
 					break;
 				default:
 					tkns.push_back({ 0,buf });
@@ -376,6 +389,7 @@ public:
 				consume();
 				while (peek().val != ' ' && peek().val != '\n') buf.push_back(consume());
 				tkns.push_back({ 37,buf });
+				buf.clear();
 			}
 			else if (peek().val == '{') {
 				consume();
@@ -404,6 +418,14 @@ public:
 			else if (peek().val == '%') {
 				consume();
 				switch (peek().val) {
+				case 37:
+					consume();
+					tkns.push_back({ 75 });
+					break;
+				case 38:
+					consume();
+					tkns.push_back({ 76 });
+					break;
 				case 61:
 					consume();
 					tkns.push_back({ 66 });
@@ -412,9 +434,17 @@ public:
 					consume();
 					tkns.push_back({ 62 });
 					break;
+				case 94:
+					consume();
+					tkns.push_back({ 74 });
+					break;
 				default:
 					tkns.push_back({ 63 });
 				}
+			}
+			else if (peek().val == '!') {
+				consume();
+				while (peek().exist && peek().val != '\n') consume();
 			}
 			else {
 				consume();
@@ -480,52 +510,10 @@ template<class T> T remove(std::vector<T>& list, unsigned long long index) {
 	list = out;
 	return str;
 }
-class macro {
-	std::vector<std::string> lines;
-	std::vector<std::string> arguments;
-	std::string name;
-public:
-	macro() {
-		pass();
-	}
-	macro(std::string name,std::vector<std::string> args) {
-		this->name = name;
-		this->lines = std::vector<std::string>();
-		this->arguments = args;
-	}
-	void add_line(std::string line) {
-		this->lines.push_back(line);
-	}
-	std::string format_line(std::vector<std::string>& values,unsigned long long line) {
-		std::vector<std::string> tokens;
-		split(tokens, this->lines.at(line), ' ');
-		unsigned long long count = 0;
-		while (count < tokens.size()) if (contains<std::string,std::string>(this->arguments, tokens.at(count))) tokens[count] = values.at(indexOf<std::string,std::string>(this->arguments, tokens.at(count++)));
-		return join(tokens, ' ');
-	}
-	void insert(std::vector<std::string>& lines, unsigned long long line,std::vector<std::string>& values) {
-		std::vector<std::string> format_lines;
-		unsigned long long count = 0;
-		while (count < this->lines.size()) format_lines.push_back(this->format_line(values, count++));
-		lines[line] = join(format_lines, '\n');
-	}
-	bool operator ==(std::string name) {
-		return this->name == name;
-	}
-	std::string operator --(int amount) {
-		return remove<std::string>(this->lines, this->lines.size() - 1);
-	}
-	std::string operator [](int line) {
-		return this->lines.at(line);
-	}
-	int size() {
-		return this->lines.size();
-	}
-};
 std::string load_file(std::string name) {
 	std::ifstream file(name);
 	if (!file.is_open()) {
-		std::cerr << "\033[31mFile" << name << "failed to open[Crashing program]\n\033[0m";
+		std::cerr << "\033[31mFile " << name << " failed to open[Crashing program]\n\033[0m";
 		std::exit(1);
 	}
 	std::vector<std::string> out;
@@ -533,187 +521,6 @@ std::string load_file(std::string name) {
 	while (std::getline(file, temp)) out.push_back(temp);
 	file.close();
 	return join(out, '\n');
-}
-unsigned char preprocess_run(std::vector<std::string>& lines, std::vector<macro>& macros,std::vector<std::string>& files) {
-	unsigned long long count = 0;
-	std::string line;
-	std::vector<std::string> temp;
-	std::vector<std::string> args;
-	while (count < lines.size()) {
-		line = lines.at(count);
-		if (line.at(0) == '#') {
-			if (line.at(1) == 'p') {
-				if (line.at(2) == 'u') {
-					if (line.at(3) == 't') {
-						if (line.at(4) == ' ') {
-							split(temp, line, ' ');
-							if (!contains<macro, std::string>(macros, temp.at(1))) return 2;
-							args = temp;
-							remove<std::string>(args, 0);
-							remove<std::string>(args, 0);
-							macros.at(indexOf<macro, std::string>(macros, temp.at(1))).insert(lines, count, args);
-							split(lines, join(lines, '\n'), '\n');
-							return 0;
-						}
-					}
-				}
-			}
-			else if (line.at(1) == 'i') {
-				if (line.at(2) == 'n') {
-					if (line.at(3) == 'c'){
-						if (line.at(4) == 'l') {
-							if (line.at(5) == 'u') {
-								if (line.at(6) == 'd') {
-									if (line.at(7) == 'e') {
-										if (line.at(8) == ' ') {
-											split(temp, line, ' ');
-											if (!contains<std::string, std::string>(files, temp.at(1) + ".header")) {
-												lines[count] = load_file(temp.at(1) + ".header");
-												files.push_back(temp.at(1) + ".header");
-												split(lines, join(lines, '\n'), '\n');
-											}
-											else remove<std::string>(lines, count);
-											return 0;
-										}
-										else if (line.at(8) == '_') {
-											if (line.at(9) == 'e') {
-												if (line.at(10) == 'x') {
-													if (line.at(11) == ' ') {
-														split(temp, line, ' ');
-														if (!contains<std::string, std::string>(files,temp.at(1))) {
-															lines[count] = load_file(temp.at(1));
-															files.push_back(temp.at(1));
-															split(lines, join(lines, '\n'), '\n');
-														}
-														else remove<std::string>(lines, count);
-														return 0;
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			else if (line.at(1) == 's') {
-				if (line.at(2) == 't') {
-					if (line.at(3) == 'a') {
-						if (line.at(4) == 'r') {
-							if (line.at(5) == 't') {
-								if (line.at(6) == '_') {
-									if (line.at(7) == 'd') {
-										if (line.at(8) == 'e') {
-											if (line.at(9) == 'f') {
-												if (line.at(10) == ' ') {
-													split(temp, line, ' ');
-													args = temp;
-													remove<std::string>(args, 0);
-													remove<std::string>(args, 0);
-													remove<std::string>(lines, count);
-													macros.push_back(macro{ temp.at(1),args });
-													while (true) {
-														macros.at(macros.size() - 1).add_line(remove<std::string>(lines, count));
-														if (macros.at(macros.size()-1)[macros.at(macros.size()-1).size() - 1] == "#end_def") {
-															macros.at(macros.size() - 1)--;
-															break;
-														}
-													}
-													return 0;
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			else if (line.at(1) == 'm') {
-				if (line.at(2) == 'o') {
-					if (line.at(3) == 'v') {
-						if (line.at(4) == 'e') {
-							if (line.at(5) == ' ') {
-								split(temp, line, ' ');
-								if (!(contains<macro, std::string>(macros, temp.at(1)))) return 2;
-								args = temp;
-								remove<std::string>(args, 0);
-								remove<std::string>(args, 0);
-								macros.at(indexOf<macro, std::string>(macros, temp.at(1))).insert(lines, count, args);
-								remove<macro>(macros, indexOf<macro, std::string>(macros, temp.at(1)));
-								split(lines, join(lines, '\n'), '\n');
-								return 0;
-							}
-						}
-					}
-				}
-			}
-			else if (line.at(1) == 'z') {
-				if (line.at(2) == 'd') {
-					if (line.at(3) == 'r') {
-						if (line.at(4) == 'i') {
-							if (line.at(5) == 'n') {
-								if (line.at(6) == 'g') {
-									if (line.at(7) == ' ') lines.at(count) = "sysout << \"testing+\";";
-								}
-							}
-						}
-					}
-				}
-			}
-			else if (line.at(1) == 'u') {
-				if (line.at(2) == 'n') {
-					if (line.at(3) == 'd') {
-						if (line.at(4) == 'e') {
-							if (line.at(5) == 'f') {
-								if (line.at(6) == ' ') {
-									split(temp, line, ' ');
-									if (!(contains<macro, std::string>(macros, temp.at(1)))) return 2;
-									remove<macro>(macros, indexOf<macro, std::string>(macros, temp.at(1)));
-									remove(lines, count);
-									return 0;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		else if (line.at(0) == '!') {
-			remove<std::string>(lines, count);
-			return 0;
-		}
-		count++;
-	}
-	return 1;
-}
-std::string preprocess(std::string name) {
-	std::vector<std::string> lines;
-	std::vector<macro> macros;
-	std::vector<std::string> files;
-	split(lines, load_file(name), '\n');
-	unsigned char err;
-	bool flag = true;
-	while (flag) {
-		err = preprocess_run(lines, macros, files);
-		switch (err) {
-		case 0:
-			break;
-		case 1:
-			flag = 0;
-			break;
-		case 2:
-			std::cerr << "\033[31mMacro does not exist[Crashing program]\n\033[0m";
-			std::exit(1);
-		default:
-			std::cerr << "\033[31mMemory corrupted[Crashing program]\n\033[0m";
-			std::exit(1);
-		}
-	}
-	return join(lines, '\n');
 }
 void load_flags(std::vector<std::string>& flags, char* argv[], int argc) {
 	int count = 0;
@@ -767,6 +574,17 @@ struct Function {
 	unsigned long long Rtype;
 	unsigned char ptr_type;
 	bool no_discard;
+	void print(Types& types) {
+		std::cout << "function " << types.at(Rtype).name << ' ' << name << '{';
+		unsigned index = 0;
+		while (index < args.size()) {
+			if (index) std::cout << ',';
+			std::cout << types.at(args.at(index).value_type).name;
+			if (args.at(index).type_of_argument) std::cout << '*';
+			std::cout << ' ' << args.at(index++).name;
+		}
+		std::cout << "}\n";
+	}
 };
 typedef std::vector<Function> Functions;
 unsigned find_function(Functions& functions, std::string name) {
@@ -783,6 +601,17 @@ bool does_function_exist(Functions& functions, std::string name) {
 struct Procedure {
 	std::string name;
 	Arguments args;
+	void print(Types& types) {
+		std::cout << "procedure " << name << '{';
+		unsigned index = 0;
+		while (index < args.size()) {
+			if (index) std::cout << ',';
+			std::cout << types.at(args.at(index).value_type).name;
+			if (args.at(index).type_of_argument) std::cout << '*';
+			std::cout << ' ' << args.at(index++).name;
+		}
+		std::cout << "}\n";
+	}
 };
 typedef std::vector<Procedure> Procedures;
 unsigned find_procedure(Procedures& procedures, std::string name) {
@@ -801,17 +630,38 @@ struct Class {
 	Functions methods;
 	Variables members;
 	Procedures procedures;
+	bool has_constructor;
+	bool has_deconstructor;
+	bool is_open;
 	bool doth_arg_exist(std::string name) {
 		return does_argument_exist(methods.at(methods.size() - 1).args, name);
 	}
 	bool doth_proc_arg_exist(std::string name) {
 		return does_argument_exist(procedures.at(procedures.size() - 1).args, name);
 	}
+	bool doth_method_exist(std::string name) {
+		return does_function_exist(methods, name);
+	}
+	bool doth_member_exist(std::string name) {
+		return does_variable_exist(members, name);
+	}
+	bool doth_proc_exist(std::string name) {
+		return does_procedure_exist(procedures, name);
+	}
 	Argument& get_arg(std::string name) {
 		return methods.at(methods.size() - 1).args.at(find_argument(methods.at(methods.size() - 1).args, name));
 	}
 	Argument& get_proc_arg(std::string name) {
 		return procedures.at(procedures.size() - 1).args.at(find_argument(procedures.at(procedures.size() - 1).args, name));
+	}
+	Function& get_method(std::string name) {
+		return methods.at(find_function(methods, name));
+	}
+	Variable& get_member(std::string name) {
+		return members.at(find_variable(members, name));
+	}
+	Procedure& get_proc(std::string name) {
+		return procedures.at(find_procedure(procedures, name));
 	}
 };
 typedef std::vector<Class> Classes;
@@ -902,9 +752,26 @@ struct scope {
 	bool is_class=false;
 	bool is_function = false;
 };
+struct Struct {
+	std::string name;
+	Variables members;
+};
+typedef std::vector<Struct> Structs;
+unsigned find_struct(Structs& structs, std::string name) {
+	unsigned count = 0;
+	while (count < structs.size()) {
+		if (structs.at(count).name == name) break;
+		count++;
+	}
+	return count++;
+}
+bool does_struct_exist(Structs& structs, std::string name) {
+	return !(find_struct(structs, name) == structs.size());
+}
 struct Library {
 	std::string name;
 	Classes classes;
+	Structs structs;
 	Functions functions;
 	Procedures procedures;
 	bool includeth_function(std::string name) {
@@ -916,6 +783,9 @@ struct Library {
 	bool includeth_class(std::string name) {
 		return does_class_exist(classes, name);
 	}
+	bool includeth_struct(std::string name) {
+		return does_struct_exist(structs, name);
+	}
 };
 typedef std::vector<Library> Libraries;
 typedef std::vector<scope> Scopes;
@@ -923,10 +793,7 @@ typedef unsigned char language_type;
 typedef unsigned char system_type;
 void print(Tokens& tkns) {
 	unsigned long long index = 0;
-	while (index < tkns.size()) {
-		std::cout << tkns.at(index).type << ':' << tkns.at(index).val << '\n';
-		index++;
-	}
+	while (index < tkns.size()) std::cout << tkns.at(index).type << ':' << tkns.at(index++).val << '\n';
 }
 void print(Tokens& tkns,unsigned long long& index) {
 	std::cout << index << ':' << tkns.at(index).type << ':' << tkns.at(index).val << '\n';
@@ -936,6 +803,13 @@ struct binding_token {
 	std::string value;
 };
 typedef std::vector<binding_token> BTokens;
+void print(BTokens& tkns) {
+	unsigned long long index = 0;
+	while (index < tkns.size()) std::cout << (int)tkns.at(index).type << ':' << tkns.at(index++).value << '\n';
+}
+void print(BTokens& tkns, unsigned long long& index) {
+	std::cout << index << ':' << (int)tkns.at(index).type << ':' << tkns.at(index).value << '\n';
+}
 class Binding_lexer {
 	unsigned long long index;
 	std::string src;
@@ -948,7 +822,9 @@ class Binding_lexer {
 	}
 public:
 	Binding_lexer(std::string name) {
+		index = 0;
 		src = load_file(name+"_bindings.data");
+		std::cout << src << '\n';
 	}
 	BTokens tokenize() {
 		BTokens out;
@@ -957,7 +833,7 @@ public:
 			if (isalpha(peek().val)) {
 				buf.push_back(consume());
 				while (peek().exist&&(isalnum(peek().val) || peek().val == '_')) buf.push_back(consume());
-				switch (loose_match(5, buf, char*, "class","end","lib","func","proc","member")) {
+				switch (loose_match(9, buf, char*, "class","end","lib","func","proc","member","open_class","struct","letter")) {
 				case 0:
 					out.push_back({ 6 });
 					break;
@@ -976,13 +852,28 @@ public:
 				case 5:
 					out.push_back({ 7 });
 					break;
+				case 6:
+					out.push_back({ 9 });
+					break;
+				case 7:
+					out.push_back({ 10 });
+					break;
+				case 8:
+					out.push_back({ 11 });
+					break;
 				default:
 					out.push_back({ 0,buf });
 				}
 				buf.clear();
 			}
-			else if (peek().val == '*') out.push_back({ 8 });
-			else if (peek().val == '\n') out.push_back({ 1 });
+			else if (peek().val == '*') {
+				consume();
+				out.push_back({ 8 });
+			}
+			else if (peek().val == '\n') {
+				consume();
+				out.push_back({ 1 });
+			}
 			else consume();
 		}
 		return out;
@@ -993,6 +884,7 @@ class compiler {
 	Classes classes;
 	Functions functions;
 	Procedures procedures;
+	Structs structs;
 	Libraries libs;
 	Scopes scopes;
 	flags mode;
@@ -1000,19 +892,19 @@ class compiler {
 	unsigned long long index;
 public:
 	compiler(std::string name) {
-		project = name + '_';
+		project = name;
 		types = Types();
-		types.push_back(Type{ "byte",'b' });
-		types.push_back(Type{ "char",'c' });
-		types.push_back(Type{ "Sbyte",'B' });
+		types.push_back(Type{ "byte",'b'});
+		types.push_back(Type{ "char",'c'});
+		types.push_back(Type{ "Sbyte",'B'});
 		types.push_back(Type{ "Umini",'m' });
-		types.push_back(Type{ "mini",'M' });
-		types.push_back(Type{ "Ucint",'t' });
-		types.push_back(Type{ "cint",'T' });
-		types.push_back(Type{ "Ulong",'i' });
-		types.push_back(Type{ "long",'I' });
-		types.push_back(Type{ "Ullong",'l' });
-		types.push_back(Type{ "llong",'L' });
+		types.push_back(Type{ "mini",'M'});
+		types.push_back(Type{ "Ucint",'t'});
+		types.push_back(Type{ "cint",'T'});
+		types.push_back(Type{ "Ulong",'i'});
+		types.push_back(Type{ "long",'I'});
+		types.push_back(Type{ "Ullong",'l'});
+		types.push_back(Type{ "llong",'L'});
 		scopes.push_back({});
 	}
 	Args get_args(std::ofstream& file,Tokens& tkns) {
@@ -1034,8 +926,8 @@ public:
 					index++;
 					break;
 				case 9:
-					if (!tkns.at(index + 2).type) return { args,1 };
-					file << tkns.at(index).val << "* " << tkns.at(index + 1).val;
+					if (tkns.at(index + 2).type) return { args,1 };
+					file << tkns.at(index).val << "* " << tkns.at(index + 2).val;
 					if (mode.get(0)) args.push_back({ find_type(types,tkns.at(index).val),2,tkns.at(index + 2).val });
 					else args.push_back({ find_type(types,tkns.at(index).val),1,tkns.at(index + 2).val });
 					mode.store(0, 0);
@@ -1093,7 +985,15 @@ public:
 		}
 		return out;
 	}
-	void setup_cpp(std::ofstream& file) {
+	void impl_sizeof_var(flags& values,std::ofstream& file) {
+		if (values.get(0)) file << "Ullong " << project << "_sizeof_var(Ullong var){\n";
+		else file << "Ullong sizeof_var(Ullong var) {\n";
+		file << indent(1) << "switch(var){\n";
+		unsigned long long index = 0;
+		while (index < types.size()) file << indent(1) << "case " << index << ":\n" << indent(2) << "return sizeof(" << types.at(index++).name << ");\n";
+		file << "}\n";
+	}
+	void setup_cpp(flags& values,std::ofstream& file) {
 		file << "#include <iostream>\n";
 		//file << "struct byte{\n";
 		//file << "unsigned char data;\n";
@@ -1103,9 +1003,21 @@ public:
 		//file << "};\n";
 		file << "typedef unsigned char byte;\n";
 		file << "typedef signed char Sbyte;\ntypedef unsigned short Umini;\ntypedef short mini;\ntypedef unsigned Ucint;\ntypedef int cint;\n";
-		file << "typedef unsigned long Ulong;\ntypedef unsigned long long Ullong;\ntypedef long long llong;";
-		//std::ofstream Lfile("defaults.cpp");
-		//Lfile << "#include <declarations.hpp>\n";
+		file << "typedef unsigned long Ulong;\ntypedef unsigned long long Ullong;\ntypedef long long llong;\n";
+		if (values.get(0)) file << "Ullong " << project << "_sizeof_var(Ullong var);\n";
+		else file << "Ullong sizeof_var(Ullong var);\n";
+		file << "byte pass();";
+		std::ofstream Lfile;
+		if (values.get(0)) {
+			Lfile.open(project + "_default.cpp");
+			Lfile << "#include <" << project << ".hpp>\n";
+		}
+		else {
+			Lfile.open("defaults.cpp");
+			Lfile << "#include <declarations.hpp>\n";
+		}
+		impl_sizeof_var(values, Lfile);
+		Lfile << "byte pass(){\n"<<indent(1)<<"return 0;\n}";
 		//Lfile << "byte::byte(unsigned char value){\n";
 		//Lfile << "  this->data=value;\n";
 		//Lfile << "}\n";
@@ -1115,7 +1027,7 @@ public:
 		//Lfile << "void byte::ass(byte other){\n";
 		//Lfile << " this->data=other.data;\n";
 		//Lfile << "}\n";
-		//Lfile.close();
+		Lfile.close();
 	}
 	void setup_c(std::ofstream& file) {
 		file << "#include <stdio.h>\n#include <stdlib.h>\ntypedef unsigned char byte;\n";
@@ -1164,6 +1076,11 @@ public:
 	bool is_class_in_library(std::string name) {
 		unsigned index = 0;
 		while (index < libs.size()) if (libs.at(index++).includeth_class(name)) return 1;
+		return 0;
+	}
+	bool is_struct_in_library(std::string name) {
+		unsigned index = 0;
+		while (index < libs.size()) if (libs.at(index++).includeth_struct(name)) return 1;
 		return 0;
 	}
 	Argument& get_argument(std::string name) {
@@ -1225,8 +1142,7 @@ public:
 		while (index < tkns.size()) {
 			switch (tkns.at(index).type) {
 			case 0:
-				args.push_back({ find_type(types,tkns.at(index).value) });
-				index++;
+				args.push_back({ find_type(types,tkns.at(index++).value) });
 				if (tkns.at(index).type == 8) {
 					args.at(args.size() - 1).type_of_argument = 3;
 					index++;
@@ -1274,9 +1190,8 @@ public:
 	}
 	unsigned char read_class_binding(BTokens& tkns, unsigned long long& index,Classes& classes) {
 		if (tkns.at(index).type) return 1;
-		classes.push_back({ tkns.at(index).value });
-		index++;
-		if (!(tkns.at(index).type == 1)) return 1;
+		classes.push_back({ tkns.at(index++).value });
+		if (!(tkns.at(index++).type == 1)) return 1;
 		while (index < tkns.size()) {
 			switch (tkns.at(index).type) {
 			case 2:
@@ -1300,15 +1215,64 @@ public:
 		}
 		return 1;
 	}
+	unsigned char read_open_class_binding(BTokens& tkns, unsigned long long& index, Classes& classes) {
+		if (tkns.at(index).type) return 1;
+		classes.push_back({ tkns.at(index).value });
+		classes.at(classes.size() - 1).is_open = 1;
+		index++;
+		if (!(tkns.at(index++).type == 1)) return 1;
+		while (index < tkns.size()) {
+			switch (tkns.at(index).type) {
+			case 2:
+				index++;
+				return 0;
+			case 4:
+				index++;
+				read_function_binding(tkns, index, classes.at(classes.size() - 1).methods);
+				break;
+			case 5:
+				index++;
+				read_procedure_binding(tkns, index, classes.at(classes.size() - 1).procedures);
+				break;
+			case 7:
+				index++;
+				read_member_binding(tkns, index, classes.at(classes.size() - 1).members);
+				break;
+			default:
+				return 1;
+			}
+		}
+		return 1;
+	}
+	unsigned char read_struct_binding(BTokens& tkns, unsigned long long& index, Structs& structs) {
+		if (tkns.at(index).type) return 1;
+		structs.push_back({ tkns.at(index++).value });
+		if (!(tkns.at(index++).type == 1)) return 1;
+		while (index < tkns.size()) {
+			switch (tkns.at(index).type) {
+			case 2:
+				index++;
+				return 0;
+			case 7:
+				index++;
+				read_member_binding(tkns, index, structs.at(structs.size() - 1).members);
+				break;
+			default:
+				return 1;
+			}
+		}
+		return 1;
+	}
 	unsigned char read_bindings(std::string name) {
 		BTokens tkns;
 		libs.push_back({ name });
-		{
-			Binding_lexer binds(name);
-			tkns = binds.tokenize();
-		}
+		Binding_lexer binds(name);
+		tkns = binds.tokenize();
+		print(tkns);
+		std::cout << tkns.size() << '\n';
 		unsigned long long index = 0;
 		while (index < tkns.size()) {
+			print(tkns, index);
 			switch (tkns.at(index).type) {
 			case 3:
 				index++;
@@ -1320,17 +1284,35 @@ public:
 			case 4:
 				index++;
 				if (read_function_binding(tkns, index, libs.at(libs.size() - 1).functions)) return 1;
-				functions.push_back(libs.at(libs.size() - 1).functions.at(libs.at(libs.size() - 1).functions.size() - 1));
+				functions.push_back((Function)libs.at(libs.size() - 1).functions.at(libs.at(libs.size() - 1).functions.size() - 1));
 				break;
 			case 5:
 				index++;
 				if (read_procedure_binding(tkns, index, libs.at(libs.size() - 1).procedures)) return 1;
-				procedures.push_back(libs.at(libs.size() - 1).procedures.at(libs.at(libs.size() - 1).procedures.size() - 1));
+				procedures.push_back((Procedure)libs.at(libs.size() - 1).procedures.at(libs.at(libs.size() - 1).procedures.size() - 1));
 				break;
 			case 6:
 				index++;
 				if (read_class_binding(tkns, index,libs.at(libs.size()-1).classes)) return 1;
-				classes.push_back(libs.at(libs.size() - 1).classes.at(libs.at(libs.size() - 1).classes.size() - 1));
+				classes.push_back((Class)libs.at(libs.size() - 1).classes.at(libs.at(libs.size() - 1).classes.size() - 1));
+				types.push_back({ classes.at(classes.size() - 1).name });
+				break;
+			case 9:
+				index++;
+				if (read_open_class_binding(tkns, index, libs.at(libs.size() - 1).classes)) return 1;
+				classes.push_back((Class)libs.at(libs.size() - 1).classes.at(libs.at(libs.size() - 1).classes.size() - 1));
+				types.push_back({ classes.at(classes.size() - 1).name });
+				break;
+			case 10:
+				index++;
+				if (read_struct_binding(tkns, index, libs.at(libs.size() - 1).structs)) return 1;
+				structs.push_back((Struct)libs.at(libs.size() - 1).structs.at(libs.at(libs.size() - 1).structs.size() - 1));
+				types.push_back({ structs.at(structs.size() - 1).name });
+				break;
+			case 11:
+				index++;
+				if (tkns.at(index).type) return 1;
+				types.at(types.size() - 1).start_character = tkns.at(index).value[0];
 				break;
 			default:
 				return 1;
@@ -1350,6 +1332,7 @@ public:
 		unsigned char stream_type = 0;
 		unsigned long long last_var_type = 0;
 		bool inClass = false;
+		bool inStruct = false;
 		bool isMember = false;
 		bool inFunction = false;
 		bool inProgram = false;
@@ -1362,7 +1345,7 @@ public:
 		if (values.get(0)) file << "#include <" + project + ".hpp>\n";
 		else file << "#include <declarations.hpp>\n";
 		while (index < tkns.size()) {
-			if (inClass || inFunction || inProgram || inProcedure || afterImports) afterImports = true;
+			if (inClass || inFunction || inProgram || inProcedure || inStruct || afterImports) afterImports = true;
 			print(tkns, index);
 			switch (tkns[index].type) {
 			case 0:
@@ -1371,7 +1354,11 @@ public:
 					{
 						unsigned long long type = find_type(types, tkns.at(index).val);
 						if (type == types.size()) return 1;
-						if (isMember) classes.at(classes.size() - 1).members.push_back({ type,0,tkns.at(index + 1).val });
+						if (isMember) {
+							if (inClass) classes.at(classes.size() - 1).members.push_back({ type,0,tkns.at(index + 1).val });
+							else if (inStruct) structs.at(structs.size() - 1).members.push_back({ type,0,tkns.at(index + 1).val });
+							else return 1;
+						}
 						else {
 							file << types.at(type).name << ' ' << tkns.at(index + 1).val;
 							scopes.at(scopes.size() - 1).variables.push_back({ type,0,tkns.at(index + 1).val });
@@ -1380,20 +1367,61 @@ public:
 					}
 					break;
 				case 9:
-					if (!tkns.at(index + 2).type) return 1;
+					if (tkns.at(index + 2).type) return 1;
 					{
 						unsigned long long type = find_type(types, tkns.at(index).val);
 						unsigned char ptr_type = 1;
-						if (mode.get(2)) ptr_type = 3;
+						if (mode.get(2)) {
+							ptr_type = 3;
+							mode.store(2, 0);
+						}
 						else if (mode.get(0)) ptr_type = 2;
 						if (type == types.size()) return 1;
-						if (isMember) classes.at(classes.size() - 1).members.push_back({type,1,tkns.at(index+2).val});
+						if (isMember) {
+							if (inClass) classes.at(classes.size() - 1).members.push_back({ type,ptr_type,tkns.at(index + 2).val });
+							else if (inStruct) structs.at(structs.size() - 1).members.push_back({ type,ptr_type,tkns.at(index + 2).val });
+							else return 1;
+						}
 						else {
 							file << types.at(type).name << "* " << tkns.at(index + 2).val;
-							scopes.at(scopes.size() - 1).variables.push_back({ type,1,tkns.at(index + 2).val });
+							scopes.at(scopes.size() - 1).variables.push_back({ type,ptr_type,tkns.at(index + 2).val });
 						}
 						index+=2;
 					}
+					break;
+				case 74:
+					if (doth_variable_exist(tkns.at(index).val)) file << scopes.at(get_variable_scope(tkns.at(index).val)).variables.at(find_variable(scopes.at(get_variable_scope(tkns.at(index).val)).variables, tkns.at(index).val)).type;
+					else if (inFunction && doth_argument_exist(tkns.at(index).val) && !inClass) file << get_argument(tkns.at(index).val).value_type;
+					else if (inProcedure && doth_proc_argument_exist(tkns.at(index).val) && !inClass) file << get_proc_argument(tkns.at(index).val).value_type;
+					else if (inFunction && inClass && classes.at(classes.size() - 1).doth_arg_exist(tkns.at(index).val)) file << classes.at(classes.size() - 1).get_arg(tkns.at(index).val).value_type;
+					else if (inProcedure && inClass && classes.at(classes.size() - 1).doth_proc_arg_exist(tkns.at(index).val)) file << classes.at(classes.size() - 1).get_proc_arg(tkns.at(index).val).value_type;
+					else if (does_function_exist(functions, tkns.at(index).val)) file << functions.at(find_function(functions, tkns.at(index).val)).Rtype;
+					else if (does_type_exist(types, tkns.at(index).val)) {
+						switch(tkns.at(index + 2).type) {
+						case 12:
+							if (tkns.at(index + 3).type) return 1;
+							if (does_class_exist(classes, tkns.at(index).val)) {
+								if (classes.at(find_class(classes, tkns.at(index).val)).is_open && classes.at(find_class(classes, tkns.at(index).val)).doth_member_exist(tkns.at(index + 3).val)) file << classes.at(find_class(classes, tkns.at(index).val)).get_member(tkns.at(index + 3).val).type;
+								else if (classes.at(find_class(classes, tkns.at(index).val)).doth_method_exist(tkns.at(index + 3).val)) file << classes.at(find_class(classes, tkns.at(index).val)).get_method(tkns.at(index + 3).val).Rtype;
+								else return 1;
+							}
+							else if (does_struct_exist(structs, tkns.at(index).val)) file << structs.at(find_struct(structs, tkns.at(index).val)).members.at(find_variable(structs.at(find_struct(structs, tkns.at(index).val)).members, tkns.at(index + 3).val)).type;
+							index += 2;
+							break;
+						default:
+							file << find_type(types, tkns.at(index).val);
+						}
+					}
+					else return 1;
+					index++;
+					break;
+				case 75:
+					if (does_type_exist(types, tkns.at(index).val)) file << "sizeof(" << tkns.at(index++).val << ')';
+					else if (doth_variable_exist(tkns.at(index).val)) {
+						if (values.get(0)) file << project << "_sizeof_var(" << tkns.at(index++).val << ')';
+						else file << "sizeof_var(" << tkns.at(index++).val << ')';
+					}
+					else return 1;
 					break;
 				default:
 					if (doth_constant_exist(tkns.at(index).val)) file << scopes.at(get_constant_scope(tkns.at(index).val)).constants.at(find_constant(scopes.at(get_constant_scope(tkns.at(index).val)).constants, tkns.at(index).val)).value;
@@ -1485,7 +1513,7 @@ public:
 				last_var_type = 0;
 				is_last_varPointer = 0;
 				[[unlikely]] if (stream_type) stream_type = 0;
-				if (inClass) {
+				if (inClass||inStruct) {
 					if (tkns.at(index + 1).type == 39) file << ";\n" << indent(scopes.size() - 3);
 					else if (!isMember) file << ";\n" << indent(scopes.size() - 2);
 				}
@@ -1528,25 +1556,16 @@ public:
 				break;
 			case 11:
 				index++;
-				[[unlikely]] if (!inClass) {
-					std::cout << "not in class\n";
-					return 1;
-				}
-				[[unlikely]] if (tkns.at(index).type) {
-					std::cout << "non-identifier after symbol[&>]\n";
-					return 1;
-				}
+				[[unlikely]] if (inClass) return 1;
+				[[unlikely]] if (tkns.at(index).type) return 1;
 				[[unlikely]] if (does_variable_exist(classes.at(classes.size() - 1).members, tkns.at(index).val)) last_var_type = classes.at(classes.size() - 1).members.at(find_variable(classes.at(classes.size() - 1).members, tkns.at(index).val)).type;
 				else if (does_function_exist(classes.at(index).methods, tkns.at(index).val)) {
 					last_var_type = classes.at(classes.size() - 1).methods.at(find_function(classes.at(classes.size() - 1).methods, tkns.at(index).val)).Rtype;
 				}
 				else if (does_procedure_exist(classes.at(index).procedures, tkns.at(index).val)) pass();
-				else {
-					std::cout << "unrecognized\n";
-					return 1;
-				}
+				else return 1;
 				file << "this->" << tkns.at(index).val;
-				if (does_function_exist(classes.at(classes.size()-1).methods, tkns.at(index).val)) {
+				if (does_function_exist(classes.at(classes.size() - 1).methods, tkns.at(index).val)) {
 					if (classes.at(classes.size() - 1).methods.at(find_function(classes.at(classes.size() - 1).methods, tkns.at(index).val)).no_discard && !afterAssignment) return 1;
 					if (tkns.at(index + 1).type == 4) compile_default_call(file, classes.at(classes.size() - 1).methods.at(find_function(classes.at(classes.size() - 1).methods, tkns.at(index).val)).args);
 					else if (!(tkns.at(index + 1).type == 42)) return 1;
@@ -1559,19 +1578,41 @@ public:
 			case 12:
 				index++;
 				[[unlikely]] if (tkns.at(index).type) return 1;
-				[[likely]] if ((!(does_function_exist(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)))&&(!(does_procedure_exist(classes.at(find_class(classes,types.at(last_var_type).name)).procedures,tkns.at(index).val)))) return 1;
-				if (is_last_varPointer) file << "->" << tkns.at(index).val;
-				else file << '.' << tkns.at(index).val;
-				if (does_function_exist(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)) {
-					if (classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).no_discard && !afterAssignment) return 1;
-					last_var_type = classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).Rtype;
-					if (tkns.at(index + 1).type == 4) compile_default_call(file, classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).args);
-					else if (!(tkns.at(index + 1).type == 42)) return 1;
+				if (does_class_exist(classes, types.at(last_var_type).name)) {
+					[[likely]] if ((!(does_function_exist(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val))) && (!(does_procedure_exist(classes.at(find_class(classes, types.at(last_var_type).name)).procedures, tkns.at(index).val)))) {
+						[[unlikely]] if (classes.at(find_class(classes, types.at(last_var_type).name)).is_open) {
+							[[likely]] if (!(does_variable_exist(classes.at(find_class(classes, types.at(last_var_type).name)).members, tkns.at(index).val))) return 1;
+						}
+						else return 1;
+					}
+					if (is_last_varPointer) file << "->";
+					else file << '.';
+					file << tkns.at(index).val;
+					if (does_function_exist(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)) {
+						if (classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).no_discard && !afterAssignment) return 1;
+						is_last_varPointer = classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).ptr_type;
+						last_var_type = classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).Rtype;
+						if (tkns.at(index + 1).type == 4) compile_default_call(file, classes.at(find_class(classes, types.at(last_var_type).name)).methods.at(find_function(classes.at(find_class(classes, types.at(last_var_type).name)).methods, tkns.at(index).val)).args);
+						else if (!(tkns.at(index + 1).type == 42)) return 1;
+					}
+					else if (does_procedure_exist(classes.at(find_class(classes, types.at(last_var_type).name)).procedures, tkns.at(index).val)) {
+						if (tkns.at(index + 1).type == 4) compile_default_call(file, classes.at(find_class(classes, types.at(last_var_type).name)).procedures.at(find_procedure(classes.at(find_class(classes, types.at(last_var_type).name)).procedures, tkns.at(index).val)).args);
+						else if (!(tkns.at(index + 1).type == 42)) return 1;
+					}
+					else if (does_variable_exist(classes.at(find_class(classes, types.at(last_var_type).name)).members, tkns.at(index).val)) {
+						is_last_varPointer = classes.at(find_class(classes, types.at(last_var_type).name)).members.at(find_variable(classes.at(find_class(classes, types.at(last_var_type).name)).members, tkns.at(index).val)).ptr_type;
+						last_var_type = classes.at(find_class(classes, types.at(last_var_type).name)).members.at(find_variable(classes.at(find_class(classes, types.at(last_var_type).name)).members, tkns.at(index).val)).type;
+					}
 				}
-				else if (does_procedure_exist(classes.at(find_class(classes, types.at(last_var_type).name)).procedures, tkns.at(index).val)) {
-					if (tkns.at(index + 1).type == 4) compile_default_call(file, classes.at(find_class(classes, types.at(last_var_type).name)).procedures.at(find_procedure(classes.at(find_class(classes, types.at(last_var_type).name)).procedures, tkns.at(index).val)).args);
-					else if (!(tkns.at(index + 1).type == 42)) return 1;
+				else if (does_struct_exist(structs, types.at(last_var_type).name)) {
+					[[likely]] if (!(does_variable_exist(structs.at(find_struct(structs, types.at(last_var_type).name)).members, tkns.at(index).val))) return 1;
+					if (is_last_varPointer) file << "->";
+					else file << ',';
+					file << tkns.at(index).val;
+					is_last_varPointer = structs.at(find_struct(structs, types.at(last_var_type).name)).members.at(find_variable(structs.at(find_struct(structs, types.at(last_var_type).name)).members, tkns.at(index).val)).ptr_type;
+					last_var_type = structs.at(find_struct(structs, types.at(last_var_type).name)).members.at(find_variable(structs.at(find_struct(structs, types.at(last_var_type).name)).members, tkns.at(index).val)).type;
 				}
+				else return 1;
 				break;
 			case 13:
 				file << "-=";
@@ -1665,7 +1706,7 @@ public:
 			case 37:
 				if (tkns.at(index).val == "ARRAY_POINTER") mode.store(0, 1);
 				else if (tkns.at(index).val == "POINTER_FUNCTION") mode.store(1, 1);
-				else if (tkns.at(index).val == "RETURN_POINTER") mode.store(2, 1);
+				else if (tkns.at(index).val == "KEEP_POINTER") mode.store(2, 1);
 				else if (tkns.at(index).val == "NO_DISCARD") mode.store(3, 1);
 				else if (tkns.at(index).val == "AUTO") mode.store(4, 0);
 				else if (tkns.at(index).val == "MANUAL") mode.store(4, 1);
@@ -1706,9 +1747,18 @@ public:
 				else if (tkns.at(index).val == "DEFINE") mode.store(5, 1);
 				else if (tkns.at(index).val == "EMBED_DEFINITION") mode.store(6, 0);
 				else if (tkns.at(index).val == "OVERRIDE") mode.store(6, 1);
+				else if (tkns.at(index).val == "LAST_PROC") procedures.at(procedures.size() - 1).print(types);
+				else if (tkns.at(index).val == "PROCS") {
+					unsigned proc_index = 0;
+					while (proc_index < procedures.size()) procedures.at(proc_index++).print(types);
+				}
+				else if (tkns.at(index).val == "FUNCS") {
+					unsigned func_index = 0;
+					while (func_index < functions.size()) functions.at(func_index++).print(types);
+				}
 				break;
 			case 38:
-				if (inClass) file << "{\n" << indent(scopes.size() - 1);
+				if (inClass||inStruct) file << "{\n" << indent(scopes.size() - 1);
 				else file << "{\n" << indent(scopes.size());
 				scopes.push_back({});
 				break;
@@ -1724,17 +1774,24 @@ public:
 							if(inClass) file << indent(scopes.size() - 2) << "delete[] " << scopes[scopes.size() - 1].variables[scopes[scopes.size() - 1].variables.size() - 1].name << ";\n";
 							else file << indent(scopes.size()-1) << "delete[] " << scopes[scopes.size() - 1].variables[scopes[scopes.size() - 1].variables.size() - 1].name << ";\n";
 							break;
+						default:
+							break;
 						}
 						scopes[scopes.size() - 1].variables.pop_back();
 					}
 				}
 				if (scopes.at(scopes.size() - 1).is_class) {
 					inClass = false;
+					inStruct = false;
 				}
 				else file << "}\n";
 				if (scopes.at(scopes.size() - 1).is_function) {
 					inFunction = false;
 					inProcedure = false;
+				}
+				if (((index+1)!=tkns.size())&&(tkns.at(index + 1).type != 39)) {
+					if (inClass) file << indent(scopes.size() - 3);
+					else file << indent(scopes.size() - 2);
 				}
 				scopes.pop_back();
 				afterReturn = false;
@@ -1765,7 +1822,7 @@ public:
 								break;
 							}
 						}
-						classes.push_back({ tkns.at(index).val });
+						classes.push_back({ name });
 					}
 					break;
 				}
@@ -1856,6 +1913,7 @@ public:
 				index++;
 				break;
 			case 55:
+				if (inStruct) return 1;
 				index++;
 				if (!(!tkns.at(index).type)&&(!tkns.at(index+1).type)) return 1;
 				{
@@ -1896,7 +1954,7 @@ public:
 			case 56:
 				switch (sys) {
 				case 0:
-					file << "cls";
+					file << "\"cls\"";
 					break;
 				}
 				break;
@@ -1911,6 +1969,7 @@ public:
 				stream_type = 1;
 				break;
 			case 60:
+				if (inStruct) return 1;
 				index++;
 				if (tkns.at(index).type) return 1;
 				{
@@ -1934,7 +1993,7 @@ public:
 				}
 				inProcedure = true;
 				if (!(tkns.at(index).type == 38)) return 1;
-				if (inClass) file << "{\n" << indent(scopes.size() - 1);
+				if (inClass||inStruct) file << "{\n" << indent(scopes.size() - 1);
 				else file << "{\n" << indent(scopes.size());
 				scopes.push_back({ .is_function = true });
 				break;
@@ -1943,7 +2002,7 @@ public:
 				stream_type = 2;
 				break;
 			case 62:
-				[[unlikely]] if (!inClass) return 1;
+				[[unlikely]] if (!(inClass||inStruct)) return 1;
 				file << find_type(types, classes.at(classes.size() - 1).name);
 				break;
 			case 63:
@@ -2112,12 +2171,25 @@ public:
 				if (!(tkns.at(index).type == 4)) return 1;
 				break;
 			case 68:
-				if (!inClass) return 1;
+			{
+				if (!(inClass||inStruct)) return 1;
+				unsigned char embed_type = 0;
 				index++;
 				if (tkns.at(index).type) return 1;
-				if (find_class(classes, tkns.at(index).val)==classes.size()) return 1;
-				if (find_class(classes, tkns.at(index).val) == (classes.size() - 1)) return 1;
-				{
+				if (!does_class_exist(classes, tkns.at(index).val)) {
+					if (!does_struct_exist(structs, tkns.at(index).val)) return 1;
+					else embed_type = 1;
+				}
+				if (embed_type) {
+					if (inStruct && find_struct(structs, tkns.at(index).val) == (structs.size() - 1)) return 1;
+					unsigned count = 0;
+					while (count < structs.at(find_struct(structs, tkns.at(index).val)).members.size()) {
+
+					}
+				}
+				else{
+					if (inStruct) return 1;
+					if (inClass&&find_class(classes, tkns.at(index).val) == (classes.size() - 1)) return 1;
 					unsigned count = 0;
 					while (count < classes.at(find_class(classes, tkns.at(index).val)).members.size()) {
 						if (!(find_variable(classes.at(classes.size() - 1).members, classes.at(find_class(classes, tkns.at(index).val)).members.at(count).name) == classes.at(classes.size() - 1).members.size())) return 1;
@@ -2169,6 +2241,7 @@ public:
 						count++;
 					}
 				}
+				}
 				index++;
 				if (!(tkns.at(index).type == 4)) return 1;
 				break;
@@ -2176,8 +2249,103 @@ public:
 				if (afterImports) return 1;
 				index++;
 				if (tkns.at(index).type) return 1;
-				if (!is_library_included(tkns.at(index++).val)) read_bindings(tkns.at(index-1).val);
+				if (!is_library_included(tkns.at(index).val)) {
+					if (read_bindings(tkns.at(index).val)) {
+						std::cout << "Failed to read bindings!\n";
+						return 1;
+					}
+					else std::cout << "Included!\n";
+				}
+				else {
+					std::cout << "Already included!\n";
+				}
+				index++;
 				if (!(tkns.at(index).type == 4)) return 1;
+				break;
+			case 70:
+				index++;
+				if (tkns.at(index).type) return 1;
+				if (!does_type_exist(types, tkns.at(index).val)) return 1;
+				file << '(' << types.at(find_type(types, tkns.at(index).val)).name;
+				if (tkns.at(index + 1).type == 9) {
+					index++;
+					file << '*';
+				}
+				file << ')';
+				break;
+			case 71:
+				inClass = true;
+				index++;
+				switch (tkns.at(index).type) {
+				case 0:
+					classes.push_back({ tkns.at(index).val });
+					break;
+				case 42:
+				{
+					std::string name = "";
+					bool test = true;
+					while (test) {
+						index++;
+						switch (tkns.at(index).type) {
+						case 0:
+							name += tkns.at(index).val;
+							break;
+						case 43:
+							test = false;
+							break;
+						}
+					}
+					classes.push_back({ name });
+				}
+				break;
+				}
+				classes.at(classes.size() - 1).is_open = 1;
+				index++;
+				types.push_back({ classes.at(classes.size() - 1).name });
+				if (!(tkns.at(index).type == 38)) return 1;
+				scopes.push_back({ .is_class = true });
+				break;
+			case 72:
+				inStruct = true;
+				index++;
+				switch (tkns.at(index).type) {
+				case 0:
+					structs.push_back({ tkns.at(index).val });
+					break;
+				case 42:
+				{
+					std::string name = "";
+					bool test = true;
+					while (test) {
+						index++;
+						switch (tkns.at(index).type) {
+						case 0:
+							name += tkns.at(index).val;
+							break;
+						case 42:
+							test = false;
+							break;
+						}
+					}
+					structs.push_back({ name });
+				}
+				index++;
+				types.push_back({ structs.at(structs.size() - 1).name });
+				if (!(tkns.at(index).type == 38)) return 1;
+				scopes.push_back({ .is_class = true });
+				}
+				break;
+			case 73:
+				file << '0';
+				break;
+			case 76:
+				file << '&';
+				break;
+			case 77:
+				file << "while(1)";
+				break;
+			case 78:
+				file << "pass()";
 				break;
 			}
 			index++;
@@ -2349,6 +2517,13 @@ public:
 					return 1;
 				}
 				break;
+			case 69:
+				if (afterImports) return 1;
+				index++;
+				if (tkns.at(index).type) return 1;
+				if (!is_library_included(tkns.at(index).val)) read_bindings(tkns.at(index).val);
+				index++;
+				if (!(tkns.at(index).type == 4)) return 1;
 			}
 			index++;
 		}
@@ -2360,8 +2535,7 @@ public:
 		while (index < classes.at(class_index).members.size()) {
 			file << '\n' << indent(1) << types.at(classes.at(class_index).members.at(index).type).name;
 			if (classes.at(class_index).members.at(index).ptr_type) file << '*';
-			file << ' ' << classes.at(class_index).members.at(index).name << ';';
-			index++;
+			file << ' ' << classes.at(class_index).members.at(index++).name << ';';
 		}
 		index = 0;
 		while (index < classes.at(class_index).methods.size()) {
@@ -2381,32 +2555,46 @@ public:
 		}
 		file << "\n}";
 	}
+	void compile_struct(std::ofstream& file, unsigned struct_index) {
+		file << "\nstruct " << structs.at(struct_index).name << '{';
+		unsigned index = 0;
+		while (index < structs.at(struct_index).members.size()) {
+			file << '\n' << indent(1) << types.at(structs.at(struct_index).members.at(index).type).name;
+			if (structs.at(struct_index).members.at(index).ptr_type) file << '*';
+			file << ' ' << structs.at(struct_index).members.at(index++).name << ';';
+		}
+		file << "\n}";
+	}
 	void create_hpp(flags& values) {
 		std::ofstream file;
 		if (values.get(0)) file.open(project + ".hpp");
 		else file.open("declarations.hpp");
-		setup_cpp(file);
+		setup_cpp(values, file);
 		unsigned index = 0;
 		while (index < libs.size()) file << "\n#include <" + libs.at(index++).name << ".hpp>";
 		index = 0;
-		while (index < classes.size()) if(!is_class_in_library(classes.at(index).name)) compile_class_cpp(file, index++);
+		while (index < classes.size()) if(!is_class_in_library(classes.at(index++).name)) compile_class_cpp(file, index-1);
+		index = 0;
+		while (index < structs.size()) if (!is_struct_in_library(structs.at(index++).name)) compile_struct(file, index - 1);
 		index = 0;
 		while (index < functions.size()) {
 			if (!is_function_in_library(functions.at(index).name)) {
 				file << '\n' << types.at(functions.at(index).Rtype).name;
 				if (functions.at(index).ptr_type) file << '*';
 				file << ' ' << functions.at(index).name;
-				compile_arguments(file, functions.at(index++).args);
+				compile_arguments(file, functions.at(index).args);
 				file << ';';
 			}
+			index++;
 		}
 		index = 0;
 		while (index < procedures.size()) {
 			if (!is_procedure_in_library(procedures.at(index).name)) {
 				file << "\nvoid " << procedures.at(index).name;
-				compile_arguments(file, procedures.at(index++).args);
+				compile_arguments(file, procedures.at(index).args);
 				file << ';';
 			}
+			index++;
 		}
 	}
 	void compile_class_c(std::ofstream& file, unsigned class_index) {
@@ -2442,24 +2630,28 @@ public:
 		unsigned index = 0;
 		while (index < libs.size()) file << "\n#include <" + libs.at(index++).name << ".h>";
 		index = 0;
-		while (index < classes.size()) if(!is_class_in_library(classes.at(index).name)) compile_class_c(file, index++);
+		while (index < classes.size()) if(!is_class_in_library(classes.at(index++).name)) compile_class_c(file, index-1);
+		index = 0;
+		while (index < structs.size()) if (!is_struct_in_library(structs.at(index++).name)) compile_struct(file, index - 1);
 		index = 0;
 		while (index < functions.size()) {
 			if (!is_function_in_library(functions.at(index).name)) {
 				file << '\n' << types.at(functions.at(index).Rtype).name;
 				if (functions.at(index).ptr_type) file << '*';
 				file << ' ' << functions.at(index).name;
-				compile_arguments(file, functions.at(index++).args);
+				compile_arguments(file, functions.at(index).args);
 				file << ';';
 			}
+			index++;
 		}
 		index = 0;
 		while (index < procedures.size()) {
 			if (!is_procedure_in_library(procedures.at(index).name)) {
 				file << "\nvoid " << procedures.at(index).name;
-				compile_arguments(file, procedures.at(index++).args);
+				compile_arguments(file, procedures.at(index).args);
 				file << ';';
 			}
+			index++;
 		}
 		file.close();
 	}
@@ -2468,7 +2660,7 @@ public:
 		while (index < members.size()) {
 			file << "\nmember " << types.at(members.at(index).type).name << ' ';
 			if (members.at(index).ptr_type) file << "* ";
-			file << members.at(index).name;
+			file << members.at(index++).name;
 		}
 	}
 	void generate_argument_binding(std::ofstream& file, Arguments args) {
@@ -2497,6 +2689,20 @@ public:
 		while (index < class_.procedures.size()) generate_procedure_binding(file, class_.procedures.at(index++));
 		file << "\nend";
 	}
+	void generate_open_class_binding(std::ofstream& file, Class& class_) {
+		file << "\nopen_class " << class_.name;
+		generate_member_binding(file, class_.members);
+		unsigned index = 0;
+		while (index < class_.methods.size()) generate_function_binding(file, class_.methods.at(index++));
+		index = 0;
+		while (index < class_.procedures.size()) generate_procedure_binding(file, class_.procedures.at(index++));
+		file << "\nend";
+	}
+	void generate_struct_binding(std::ofstream& file, Struct& struct_) {
+		file << "\nstruct " << struct_.name;
+		generate_member_binding(file, struct_.members);
+		file << "\nend";
+	}
 	void generate_bindings() {
 		std::ofstream file(project+"_bindings.data");
 		unsigned index = 0;
@@ -2505,11 +2711,19 @@ public:
 			file << "lib " << libs.at(index++).name;
 		}
 		index = 0;
-		while (index < classes.size()) generate_class_binding(file, classes.at(index++));
+		while (index < classes.size()) {
+			if (!is_class_in_library(classes.at(index++).name)) {
+				if (classes.at(index - 1).is_open) generate_open_class_binding(file, classes.at(index - 1));
+				else generate_class_binding(file, classes.at(index - 1));
+			}
+		}
 		index = 0;
-		while (index < functions.size()) generate_function_binding(file, functions.at(index++));
+		while (index < structs.size()) if (!is_struct_in_library(structs.at(index++).name)) generate_struct_binding(file, structs.at(index - 1));
 		index = 0;
-		while (index < procedures.size()) generate_procedure_binding(file, procedures.at(index++));
+		while (index < functions.size()) if(!is_function_in_library(functions.at(index++).name)) generate_function_binding(file, functions.at(index-1));
+		index = 0;
+		while (index < procedures.size()) if(!is_procedure_in_library(procedures.at(index++).name)) generate_procedure_binding(file, procedures.at(index-1));
+		file << '\n';
 		file.close();
 	}
 };
@@ -2552,7 +2766,7 @@ void compile(language_type lang, system_type os, flags& values,std::vector<std::
 	unsigned index = 0;
 	lexer lex("");
 	while (index < files.size()) {
-		lex.reset(preprocess(files.at(index)+".aur"));
+		lex.reset(load_file(files.at(index) + ".aur"));
 		switch (lang) {
 		case 0:
 			try{
